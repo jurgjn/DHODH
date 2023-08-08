@@ -1,0 +1,12 @@
+compound_id	pubchem	smiles
+Leflunomide	https://pubchem.ncbi.nlm.nih.gov/compound/3899	CC1=C(C=NO1)C(=O)NC2=CC=C(C=C2)C(F)(F)F
+Teriflunomide	https://pubchem.ncbi.nlm.nih.gov/compound/54684141	C/C(=C(\C#N)/C(=O)NC1=CC=C(C=C1)C(F)(F)F)/O
+Tiratricol	https://pubchem.ncbi.nlm.nih.gov/compound/5803	C1=CC(=C(C=C1OC2=C(C=C(C=C2I)CC(=O)O)I)I)O
+Dicumarol	https://pubchem.ncbi.nlm.nih.gov/compound/54676038	C1=CC=C2C(=C1)C(=C(C(=O)O2)CC3=C(C4=CC=CC=C4OC3=O)O)O
+Azaribine	https://pubchem.ncbi.nlm.nih.gov/compound/16574	CC(=O)OC[C@@H]1[C@H]([C@H]([C@@H](O1)N2C(=O)NC(=O)C=N2)OC(=O)C)OC(=O)C
+Tegaserod_maleate	https://pubchem.ncbi.nlm.nih.gov/compound/135413539	CCCCCN=C(N)N/N=C/C1=CNC2=C1C=C(C=C2)OC.C(=C\C(=O)O)\C(=O)O
+Flunarizine_dihydrochloride	https://pubchem.ncbi.nlm.nih.gov/compound/5282407	C1CN(CCN1C/C=C/C2=CC=CC=C2)C(C3=CC=C(C=C3)F)C4=CC=C(C=C4)F.Cl.Cl
+Felodipine	https://pubchem.ncbi.nlm.nih.gov/compound/3333	CCOC(=O)C1=C(NC(=C(C1C2=C(C(=CC=C2)Cl)Cl)C(=O)OC)C)C
+Cisatracurium_besylate	https://pubchem.ncbi.nlm.nih.gov/compound/62886	C[N@@+]1(CCC2=CC(=C(C=C2[C@H]1CC3=CC(=C(C=C3)OC)OC)OC)OC)CCC(=O)OCCCCCOC(=O)CC[N@+]4(CCC5=CC(=C(C=C5[C@H]4CC6=CC(=C(C=C6)OC)OC)OC)OC)C.C1=CC=C(C=C1)S(=O)(=O)[O-].C1=CC=C(C=C1)S(=O)(=O)[O-]
+Mesoridazine_besylate	https://pubchem.ncbi.nlm.nih.gov/compound/36207	CN1CCCCC1CCN2C3=CC=CC=C3SC4=C2C=C(C=C4)S(=O)C.C1=CC=C(C=C1)S(=O)(=O)O
+Amethopterin	https://pubchem.ncbi.nlm.nih.gov/compound/4112	CN(CC1=CN=C2C(=N1)C(=NC(=N2)N)N)C3=CC=C(C=C3)C(=O)NC(CCC(=O)O)C(=O)O
