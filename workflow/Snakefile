@@ -1,7 +1,7 @@
 
 import itertools, pandas as pd, matplotlib.pyplot as plt, seaborn as sns, openbabel, openbabel.pybel, scipy, scipy.stats, openbabel.pybel
 
-rule smiles_dude: # ./smk_local smiles_dude --dry-run
+rule smiles_dude:
     input:
         smi_actives = 'resources/DHODH_DUD-E/pyrd/actives_final.ism',
         smi_decoys = 'resources/DHODH_DUD-E/pyrd/decoys_final.ism',
@@ -15,3 +15,22 @@ rule smiles_dude: # ./smk_local smiles_dude --dry-run
         shuf -n 645 --random-source={params.random_source} {input.smi_decoys} -o {output.smi_decoys}
     """
 
+localrules: rdconf
+
+rule rdconf:
+    input:
+        smi = 'results/smiles/{compounds_id}.smi',
+    output:
+        sdf = 'results/rdconf/{compounds_id}.sdf',
+    shell: """
+        python software/rdkit-scripts/rdconf.py --maxconfs 1 {input.smi} {output.sdf}
+    """
+
+rule all:
+    """
+        ./smk_local --dry-run
+    """
+    default_target: True
+    input:
+        'results/rdconf/dude_actives.sdf',
+        'results/rdconf/dude_decoys.sdf',
