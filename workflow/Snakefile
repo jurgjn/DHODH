@@ -1,0 +1,17 @@
+
+import itertools, pandas as pd, matplotlib.pyplot as plt, seaborn as sns, openbabel, openbabel.pybel, scipy, scipy.stats, openbabel.pybel
+
+rule smiles_dude: # ./smk_local smiles_dude --dry-run
+    input:
+        smi_actives = 'resources/DHODH_DUD-E/pyrd/actives_final.ism',
+        smi_decoys = 'resources/DHODH_DUD-E/pyrd/decoys_final.ism',
+    output:
+        smi_actives = 'results/smiles/dude_actives.smi',
+        smi_decoys = 'results/smiles/dude_decoys.smi',
+    params:
+        random_source = 'resources/DHODH_DUD-E/pyrd.tar.gz',
+    shell: """
+        cp {input.smi_actives} {output.smi_actives}
+        shuf -n 645 --random-source={params.random_source} {input.smi_decoys} -o {output.smi_decoys}
+    """
+

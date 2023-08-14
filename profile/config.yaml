@@ -1,0 +1,39 @@
+# https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles
+# https://snakemake.readthedocs.io/en/stable/executing/cluster.html#executing-on-slurm-clusters
+# https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#snakefiles-resources
+# https://www.embl.org/groups/bioinformatics-rome/blog/2022/04/snakemake-profile-4-defining-resources-and-threads/
+slurm: True
+jobs: 1000
+latency-wait: 60
+quiet: progress
+keep-going: True
+rerun-incomplete: True
+default-resources:
+  - slurm_account=es_biol
+  - slurm_partition=es_biol
+  - threads=1
+  - mem_mb_per_cpu=1024
+  - runtime=30
+set-resources:
+  - obabel_hxr:runtime=10
+  - obabel_d:runtime=10
+  - autosite:runtime=60
+  - autosite_summary:runtime=10
+  # 64 threads, 16G mem, 8hrs runtime
+  - gnina64_nogpu:threads=64
+  - gnina64_nogpu:mem_mb_per_cpu=256
+  - gnina64_nogpu:runtime=480
+  - obabel_hxr:threads=1
+  - obabel_hxr:runtime=10
+  - obabel_hxr:mem_per_cpu=1024
+  - obabel_d:threads=1
+  - obabel_d:runtime=10
+  - obabel_d:mem_mb_per_cpu=1024
+  - autosite:threads=1
+  - autosite:runtime=60
+  - autosite:mem_mb_per_cpu=4096
+  - autosite_summary:threads=1
+  - autosite_summary:runtime=10
+  - autosite_summary:mem_mb_per_cpu=1024
+  - DeepFRI:mem_mb_per_cpu=32768
+  - prism_23Q2:mem_mb_per_cpu=16384

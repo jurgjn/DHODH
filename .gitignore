@@ -1,0 +1,7 @@
+.snakemake/
+_stash/
+envs/
+resources/
+results/
+software/
+*~
