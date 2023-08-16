@@ -1,7 +1,11 @@
 .snakemake/
+_smk_sbatch/
 _stash/
 envs/
+matplotlib/
 resources/
 results/
 software/
+workflow/modules/__pycache__
+
 *~
