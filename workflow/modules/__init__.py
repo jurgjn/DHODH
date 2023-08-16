@@ -1,5 +1,5 @@
 
-import numpy as np, scipy, scipy.stats, matplotlib.pyplot as plt, pandas as pd, openbabel, openbabel.pybel
+import numpy as np, scipy, scipy.stats, matplotlib.pyplot as plt, seaborn as sns, pandas as pd, openbabel, openbabel.pybel
 
 def read_gnina(fp, agg=False):
     # agg: aggregate scores over all docking modes

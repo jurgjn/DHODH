@@ -124,7 +124,8 @@ rule lig_decoys_plot:
     input:
         sdf = [ 'results/pdb.smina/{struct_id}+%s.sdf' % (compounds_id,) for compounds_id in read_dude()['compounds_id'] ],
     output:
-        png = 'results/pdb.smina.plot_lig_decoys/{struct_id}.png'
+        png = 'results/pdb.smina.plot_lig_decoys/{struct_id}.png',
+        tsv = 'results/pdb.smina.plot_lig_decoys/{struct_id}.tsv',
     run:
         df_ = read_dude()
         df_['sdf_out'] = list(input.sdf)
@@ -136,12 +137,12 @@ rule lig_decoys_plot:
         sns.barplot(data=df_scores_.query('~is_decoy'), x='decoyNormalisedAffinity', y='label', ax=ax[1], color='tab:blue', order=order_)
         #ax[1].axvline(1.25, color='tab:red')
         fig.savefig(output.png, bbox_inches='tight')
+        df_scores_.to_csv(output.tsv, sep='\t', header=True, index=False)
 
 rule all:
     """
-        ./smk_local --dry-run
-        ./smk_sbatch --dry-run
-        ./smk_slurm --dry-run
+        profile_euler/run_local --dry-run
+        profile_euler/run_sbatch --dry-run
     """
     default_target: True
     input:

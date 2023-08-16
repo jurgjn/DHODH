@@ -5,7 +5,7 @@ envs/
 matplotlib/
 resources/
 results/
-software/
+software
 workflow/modules/__pycache__
 
 *~
