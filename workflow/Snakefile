@@ -1,29 +1,14 @@
 
-import itertools, pandas as pd, numpy as np, matplotlib.pyplot as plt, seaborn as sns, openbabel, openbabel.pybel, scipy, scipy.stats, openbabel.pybel
+import itertools, subprocess, pandas as pd, numpy as np, matplotlib.pyplot as plt, seaborn as sns, openbabel, openbabel.pybel, scipy, scipy.stats, openbabel.pybel
 
 from modules import *
-
-rule smiles_dude:
-    input:
-        smi_actives = 'resources/DHODH_DUD-E/pyrd/actives_final.ism',
-        smi_decoys = 'resources/DHODH_DUD-E/pyrd/decoys_final.ism',
-    output:
-        smi_actives = 'results/smiles/dude_actives.smi',
-        smi_decoys = 'results/smiles/dude_decoys.smi',
-    params:
-        random_source = 'resources/DHODH_DUD-E/pyrd.tar.gz',
-    shell: """
-        cp {input.smi_actives} {output.smi_actives}
-        shuf -n 645 --random-source={params.random_source} {input.smi_decoys} -o {output.smi_decoys}
-    """
-
-localrules: rdconf
 
 rule rdconf:
     input:
         smi = 'results/smiles/{compounds_id}.smi',
     output:
         sdf = 'results/rdconf/{compounds_id}.sdf',
+    conda: 'rdconf-env'
     shell: """
         python software/rdkit-scripts/rdconf.py --maxconfs 1 {input.smi} {output.sdf}
     """
@@ -68,94 +53,101 @@ rule pdb:
         pdb_selresname -{params.lig} results/pdb/{wildcards.struct_id}_pdbfixer_aligned.pdb > results/pdb/{wildcards.struct_id}_lig.pdb
     """
 
-rule reduce:
-    input:
-        pdb = 'results/pdb/{struct_id}.pdb',
-    output:
-        pdb = 'results/pdb.reduce/{struct_id}.pdb',
-        fix = 'results/pdb.reduce/{struct_id}.fix.pdb',
-        pdbqt = 'results/pdb.reduce/{struct_id}.pdbqt',
-    shell: """
-        #export REDUCE_HET_DICT=/cluster/project/beltrao/jjaenes/software/miniconda3/envs/adfr-suite/bin/reduce_wwPDB_het_dict.txt
-        #conda run -p /cluster/project/beltrao/jjaenes/software/miniconda3/envs/adfr-suite reduce {input.pdb} > {output.pdb}
-        export REDUCE_HET_DICT=software/reduce/reduce_wwPDB_het_dict.txt
-        software/reduce/reduce_src/reduce -FLIP {input.pdb} > {output.pdb} || true
-        pdbfixer {output.pdb} --output={output.fix}
-        obabel {output.fix} -xr --partialcharge gasteiger -O{output.pdbqt}
-    """
-
 rule smina:
     input:
-        sdf = 'results/rdconf/{compounds_id}.sdf',
+        sdf = 'results/rdconf/{library_id}.sdf',
         pdb = 'results/pdb/{struct_id}.pdb',
     output:
-        sdf = 'results/pdb.smina/{struct_id}+{compounds_id}.sdf',
-    threads: 64
+        sdf = 'results/smina/{library_id}+{struct_id}.sdf',
+    threads: 8
     shell: """
-        software/bin/smina --cpu {threads}\
+        software/gnina-1.1/gnina --cpu {threads}\
             --ligand {input.sdf}\
             --receptor {input.pdb}\
-            --autobox_ligand {input.pdb}\
+            --autobox_ligand results/pdb/1d3g,1d3h,4igh,6j3c_lig.pdb\
             --out {output.sdf}\
-            --exhaustiveness 64\
-            --seed 4
+            --exhaustiveness 16\
+            --seed 4\
+            --cnn_scoring none
     """
 
-rule gnina:
+library_id = [
+    'dude_actives',
+    'dude_decoys_a',
+    'dude_decoys_b',
+    'dude_decoys_c',
+    'dude_decoys_d',
+    'dude_decoys_e',
+    'dude_decoys_f',
+    'dude_decoys_g',
+    'dude_decoys_h',
+    'dude_decoys_i',
+    'dude_decoys_j',
+    'prestwick_a',
+    'prestwick_b',
+    'prestwick_c',
+]
+
+struct_id=['1d3g', '1d3h', '4igh', '6j3c']
+
+rule DiffDockOut:
     input:
-        sdf = 'results/rdconf/{compounds_id}.sdf',
-        pdb = 'results/pdb/{struct_id}.pdb',
+        csv = 'results/DiffDockCsv/{library_id}+{struct_id}.csv',
     output:
-        sdf = 'results/pdb.gnina/{struct_id}+{compounds_id}.sdf',
-    threads: 64
+        dir = directory('results/DiffDockOut/{library_id}+{struct_id}'),
+    params:
+        workdir = '/cluster/project/beltrao/jjaenes/23.03_DHODH',
+        diffdock_dir = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/DiffDock',
+        gnina_path = '/cluster/work/beltrao/jjaenes/24.06.10_af2genomics/software/gnina-1.1/gnina',
+    envmodules:
+        'stack/2024-05',
+        'gcc/13.2.0',
+        'cuda/12.2.1',
+    singularity:
+        'software/DiffDock/DiffDock.sif'
     shell: """
-        module load gcc/9.3.0; software/bin/gnina --cpu {threads}\
-            --ligand {input.sdf}\
-            --receptor {input.pdb}\
-            --autobox_ligand {input.pdb}\
-            --out {output.sdf}\
-            --exhaustiveness 64\
-            --seed 4 --no_gpu --cnn crossdock_default2018
+        eval "$(micromamba shell hook --shell bash)"
+        micromamba activate diffdock
+        cd {params.diffdock_dir}
+        python -m inference --config default_inference_args.yaml --protein_ligand_csv={params.workdir}/{input.csv} --out_dir {params.workdir}/{output.dir} \
+            --gnina_minimize \
+            --gnina_path {params.gnina_path} \
+            --gnina_log_file {params.workdir}/{output.dir}/gnina_log.txt
     """
 
-localrules: lig_decoys_plot
-
-rule lig_decoys_plot:
+rule DiffDockRescore:
     input:
-        sdf = [ 'results/pdb.smina/{struct_id}+%s.sdf' % (compounds_id,) for compounds_id in read_dude()['compounds_id'] ],
+        csv = 'results/DiffDockCsv/{library_id}+{struct_id}.csv',
+        dir = 'results/DiffDockOut/{library_id}+{struct_id}',
     output:
-        png = 'results/pdb.smina.plot_lig_decoys/{struct_id}.png',
-        tsv = 'results/pdb.smina.plot_lig_decoys/{struct_id}.tsv',
+        dir = directory('results/DiffDockRescore/{library_id}+{struct_id}'),
+        tsv = 'results/DiffDockRescore/{library_id}+{struct_id}.tsv',
     run:
-        df_ = read_dude()
-        df_['sdf_out'] = list(input.sdf)
+        df_csv_ = pd.read_csv(input.csv, sep=',')
+        gw_ = glob_wildcards('results/DiffDockOut/%s+%s/{complex_name}/rank1_confidence{diffdock_confidence_score}.sdf' % (wildcards.library_id, wildcards.struct_id))
+        df_out_ = pd.DataFrame.from_dict(gw_._asdict()).astype({'diffdock_confidence_score': float})
+        df_ = df_csv_.merge(df_out_, on='complex_name', how='left').sort_values('diffdock_confidence_score', ascending=False)
 
-        df_scores_ = pd.concat([ read_affinities_dude(r.sdf_out, r.compounds_id) for i, r in df_.iterrows() ], axis=0)
-        fig, ax = plt.subplots(1, 2, sharey=True, figsize=(10,8))
-        order_ = df_scores_.query('~is_decoy').sort_values('decoyNormalisedAffinity', ascending=False)['label'].to_list()
-        sns.violinplot(data=df_scores_, x='minimizedAffinity', y='label', hue='is_decoy', ax=ax[0], split=True, cut=0, inner='stick', order=order_)#, color='tab:blue')
-        sns.barplot(data=df_scores_.query('~is_decoy'), x='decoyNormalisedAffinity', y='label', ax=ax[1], color='tab:blue', order=order_)
-        #ax[1].axvline(1.25, color='tab:red')
-        fig.savefig(output.png, bbox_inches='tight')
-        df_scores_.to_csv(output.tsv, sep='\t', header=True, index=False)
+        snakemake.utils.makedirs(output.dir)
+        #df_['receptor'] = df_['complex_name'].map(lambda complex_name: f'results/DiffDockOut/{wildcards.vscreen_id}/{complex_name}/{complex_name}_esmfold.pdb')
+        df_['receptor'] = df_['protein_path']
+        df_['ligand'] = df_['complex_name'].map(lambda complex_name: f'results/DiffDockOut/{wildcards.library_id}+{wildcards.struct_id}/{complex_name}/rank1.sdf')
+        df_['gnina_sdf'] = df_['complex_name'].map(lambda complex_name: f'results/DiffDockRescore/{wildcards.library_id}+{wildcards.struct_id}/{complex_name}_gnina.sdf')
+
+        def rescore_(r):
+            if os.path.isfile(r.ligand) and os.path.isfile(r.receptor):
+                shell(f'software/gnina-1.1/gnina --minimize --receptor "{r.receptor}" --ligand "{r.ligand}" --out "{r.gnina_sdf}"', text=True, shell=True, capture_output=True)
+                top_ = read_gnina(r.gnina_sdf).head(1).squeeze()
+                return -top_.minimizedAffinity, top_.CNNscore, top_.CNNaffinity, top_.CNN_VS
+            else:
+                return float('NaN'), float('NaN'), float('NaN'), float('NaN')
+
+        df_[['minimizedAffinity', 'CNNscore', 'CNNaffinity', 'CNN_VS']] = df_.apply(rescore_, axis=1, result_type='expand')
+        df_.to_csv(output.tsv, sep='\t', index=False, header=True)
 
 rule all:
-    """
-        profile_euler/run_local --dry-run
-        profile_euler/run_sbatch --dry-run
-    """
-    default_target: True
     input:
-        #[f'results/pdb.smina/{struct_id}+dude_actives.sdf' for struct_id in pdb_lig.keys() ],
-        #[f'results/pdb.smina/{struct_id}+dude_decoys.sdf' for struct_id in pdb_lig.keys() ],
-        #[f'results/pdb.smina/{struct_id}+DHODH_ChEMBL.sdf'  for struct_id in pdb_lig.keys() ],
-        #[f'results/pdb.smina/{struct_id}+DHODH_inhibitors.sdf'  for struct_id in pdb_lig.keys() ],
-        #[f'results/pdb.smina/{struct_id}+DHODH_inhibitors_pubchem.sdf'  for struct_id in pdb_lig.keys() ],
-        #[f'results/pdb.gnina/{struct_id}+dude_actives.sdf' for struct_id in pdb_lig.keys() ],
-        #[f'results/pdb.gnina/{struct_id}+dude_decoys.sdf' for struct_id in pdb_lig.keys() ],
-        #[f'results/pdb.gnina/{struct_id}+DHODH_ChEMBL.sdf'  for struct_id in pdb_lig.keys() ],
-        #[f'results/pdb.gnina/{struct_id}+DHODH_inhibitors.sdf' for struct_id in pdb_lig.keys() ],
-        #[f'results/pdb.gnina/{struct_id}+DHODH_inhibitors_pubchem.sdf' for struct_id in pdb_lig.keys() ],
-        #expand('results/pdb.smina/{struct_id}+{compounds_id}.sdf', struct_id=pdb_lig.keys(), compounds_id=read_dude()['compounds_id']),
-        #expand('results/pdb.gnina/{struct_id}+{compounds_id}.sdf', struct_id=pdb_lig.keys(), compounds_id=read_dude()['compounds_id']),
-        expand('results/pdb.smina.plot_lig_decoys/{struct_id}.png', struct_id=pdb_lig.keys())
+        #expand('results/rdconf/{library_id}.sdf', library_id=library_id),
+        expand('results/smina/{library_id}+{struct_id}.sdf', library_id=library_id, struct_id=struct_id),
+        #expand('results/DiffDockOut/{library_id}+{struct_id}', library_id=library_id, struct_id=struct_id),
+        expand('results/DiffDockRescore/{library_id}+{struct_id}.tsv', library_id=library_id, struct_id=struct_id),

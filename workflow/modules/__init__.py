@@ -1,30 +1,47 @@
 
+import itertools
+import subprocess
+import openbabel.pybel
+import pandas as pd
+import os, os.path
 import numpy as np, scipy, scipy.stats, matplotlib.pyplot as plt, seaborn as sns, pandas as pd, openbabel, openbabel.pybel
+import sklearn.preprocessing
+from pprint import pprint
 
-def read_gnina(fp, agg=False):
-    # agg: aggregate scores over all docking modes
+DHODH_seq = 'MAWRHLKKRAQDAVIILGGGGLLFASYLMATGDERFYAEHLMPTLQGLLDPESAHRLAVRFTSLGLLPRARFQDSDMLEVRVLGHKFRNPVGIAAGFDKHGEAVDGLYKMGFGFVEIGSVTPKPQEGNPRPRVFRLPEDQAVINRYGFNSHGLSVVEHRLRARQQKQAKLTEDGLPLGVNLGKNKTSVDAAEDYAEGVRVLGPLADYLVVNVSSPNTAGLRSLQGKAELRRLLTKVLQERDGLRRVHRPAVLVKIAPDLTSQDKEDIASVVKELGIDGLIVTNTTVSRPAGLQGALRSETGGLSGKPLRDLSTQTIREMYALTQGRVPIIGVGGVSSGQDALEKIRAGASLVQLYTALTFWGPPVVGKVKRELEALLKEQGFGGVTDAIGADHRR'
+
+library_id = [
+    'dude_actives',
+    'dude_decoys_a',
+    'dude_decoys_b',
+    'dude_decoys_c',
+    'dude_decoys_d',
+    'dude_decoys_e',
+    'dude_decoys_f',
+    'dude_decoys_g',
+    'dude_decoys_h',
+    'dude_decoys_i',
+    'dude_decoys_j',
+    'prestwick_a',
+    'prestwick_b',
+    'prestwick_c',
+]
+
+def read_gnina(fp):
     def get_(mol_, key_):
         return float(mol_.data[key_]) if key_ in mol_.data else float('NaN')
-
-    cols_ = ['ligand_id', 'pose_id', 'minimizedAffinity', 'CNNscore', 'CNNaffinity', 'CNN_VS']
+    cols_ = ['ligand_id', 'minimizedAffinity', 'CNNscore', 'CNNaffinity', 'CNN_VS']
     df_ = pd.DataFrame.from_records([[
         mol.title,
-        pose_id,
-        -get_(mol, 'minimizedAffinity'),
+        #pose_id,
+        get_(mol, 'minimizedAffinity'),
         get_(mol, 'CNNscore'),
         get_(mol, 'CNNaffinity'),
         get_(mol, 'CNN_VS'),
-    ] for (pose_id, mol) in enumerate(openbabel.pybel.readfile('sdf', fp), start=1) ], columns=cols_)
-
-    if agg:
-        return df_.groupby('ligand_id').agg(
-            minimizedAffinity = ('minimizedAffinity', np.nanmax),
-            CNNscore = ('CNNscore', np.nanmax),
-            CNNaffinity = ('CNNaffinity', np.nanmax),
-            CNN_VS = ('CNN_VS', np.nanmax),
-        )
-    else:
-        return df_
+    ] for mol in openbabel.pybel.readfile('sdf', fp) ], columns=cols_)
+    # Re-create pose_id to match output table shown during docking
+    df_.insert(loc=1, column='mode_id', value=df_.groupby('ligand_id', as_index=False).cumcount() + 1)
+    return df_
 
 def read_ligands_charge(fp_):
     return pd.read_csv(fp_, sep='\t', names=['smiles', 'input_id', 'protonation_id', 'mwt', 'logp', 'rb', 'hba', 'hbd', 'charge'])
@@ -56,3 +73,16 @@ def read_affinities_dude(fp, label):#input_id, protonation_id):
     df_['is_decoy'] = True
     df_.at[0, 'is_decoy'] = False
     return df_
+
+def any_check(x):
+    # Check that all elements in iterator are identical & return any/first one
+    assert len(set(iter(x))) == 1
+    return next(iter(x))
+
+def smi_largest_component(smiles):
+    #https://github.com/dkoes/rdkit-scripts/blob/master/rdconf.py#L80
+    if '.' in smiles:
+        return max(smiles.split('.'), key=len)
+    else:
+        return smiles
+
