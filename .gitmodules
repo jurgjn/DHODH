@@ -1,0 +1,3 @@
+[submodule "resources/covid-in-vitro-screening-data"]
+	path = resources/covid-in-vitro-screening-data
+	url = https://github.com/coleb/covid-in-vitro-screening-data.git
