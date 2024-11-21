@@ -1,7 +1,4 @@
-# DHODH
+# DHODH virtual screen
+Virtual screening of DHODH inhibitors reported in Schuhknecht et al., A human metabolic map of pharmacological perturbations unlocks new modes of action for conventional drugs.
 
-```
-mamba create -p envs/main -c conda-forge openbabel pdbfixer prody=2.2.0 ipykernel jupyter notebook conda mamba smina scipy pandas seaborn rdkit scikit-learn snakemake-minimal git-lfs
-mamba activate envs/main
-pip install pdb-tools
-```
+- workflow/notebooks/PlotSummaryFigure.ipynb generates the summary plots presented above and in the paper
